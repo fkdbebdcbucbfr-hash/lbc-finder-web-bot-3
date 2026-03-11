@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LBC Finder</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0c;
+    --surface: #111113;
+    --surface2: #18181c;
+    --border: #242428;
+    --accent: #ff5c35;
+    --accent-glow: rgba(255,92,53,0.15);
+    --text: #efefef;
+    --muted: #5a5a65;
+    --green: #3dffa0;
+    --discord: #5865F2;
+    --discord-hover: #4752c4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; }
+
+  /* HEADER */
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10,10,12,0.9); backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px; height: 60px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .logo { font-size: 1rem; font-weight: 800; letter-spacing: -0.04em; }
+  .logo span { color: var(--accent); }
+  .logo-icon { width: 30px; height: 30px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .status-badge { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  /* LOGIN PAGE */
+  #loginPage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: calc(100vh - 60px); padding: 40px 20px; text-align: center;
+  }
+  .login-emoji { font-size: 4rem; margin-bottom: 24px; }
+  #loginPage h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; letter-spacing: -0.05em; margin-bottom: 12px; }
+  #loginPage h1 em { font-style: normal; color: var(--accent); }
+  #loginPage p { color: var(--muted); font-size: 0.95rem; margin-bottom: 36px; max-width: 400px; line-height: 1.6; }
+  .discord-btn {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: var(--discord); border: none; border-radius: 14px;
+    padding: 14px 28px; color: white;
+    font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700;
+    cursor: pointer; text-decoration: none;
+    transition: all 0.2s;
+    box-shadow: 0 8px 32px rgba(88,101,242,0.3);
+  }
+  .discord-btn:hover { background: var(--discord-hover); transform: translateY(-2px); box-shadow: 0 12px 40px rgba(88,101,242,0.4); }
+  .discord-logo { width: 24px; height: 24px; }
+
+  /* APP */
+  #app { display: none; }
+
+  /* USER AVATAR */
+  .user-info { display: flex; align-items: center; gap: 8px; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border); }
+  .username { font-size: 0.82rem; font-weight: 700; }
+  .logout-btn {
+    background: transparent; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--muted); font-family: 'Syne', sans-serif; font-size: 0.75rem;
+    padding: 5px 10px; cursor: pointer; transition: all 0.2s;
+  }
+  .logout-btn:hover { border-color: #ff4444; color: #ff4444; }
+
+  /* TABS */
+  .tabs {
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    background: var(--surface);
+  }
+  .tab {
+    padding: 14px 20px; font-size: 0.85rem; font-weight: 700;
+    color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all 0.2s; margin-bottom: -1px;
+  }
+  .tab.active { color: var(--text); border-color: var(--accent); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* MAIN LAYOUT */
+  .main { max-width: 1200px; margin: 0 auto; padding: 32px 40px 80px; }
+  @media(max-width:768px) { .main { padding: 20px; } header { padding: 0 20px; } .tabs { padding: 0 20px; } }
+
+  /* ALERTS VIEW */
+  #alertsView { display: grid; grid-template-columns: 380px 1fr; gap: 32px; }
+  @media(max-width:900px) { #alertsView { grid-template-columns: 1fr; } }
+
+  .panel-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; position: sticky; top: 100px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 0.72rem; color: var(--muted); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+  .form-group input, .form-group select {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; color: var(--text);
+    font-family: 'Syne', sans-serif; font-size: 0.85rem; outline: none;
+    transition: border-color 0.2s; appearance: none;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+  .price-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .submit-btn {
+    width: 100%; background: var(--accent); border: none; border-radius: 11px;
+    padding: 12px; color: white; font-family: 'Syne', sans-serif; font-size: 0.88rem;
+    font-weight: 700; cursor: pointer; transition: all 0.2s; margin-top: 4px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .submit-btn:hover { background: #ff7a5c; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255,92,53,0.3); }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .alerts-grid { display: flex; flex-direction: column; gap: 10px; }
+  .alert-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 18px; display: flex; align-items: center; gap: 14px;
+    transition: all 0.2s; animation: fadeUp 0.3s ease;
+  }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .alert-card:hover { background: var(--surface2); border-color: #2e2e34; }
+  .alert-icon { width: 40px; height: 40px; background: var(--surface2); border: 1px solid var(--border); border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .alert-info { flex: 1; min-width: 0; }
+  .alert-name { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .alert-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 7px; font-size: 0.67rem; font-family: 'DM Mono', monospace; color: var(--muted); }
+  .tag.price { color: var(--green); border-color: rgba(61,255,160,0.2); background: rgba(61,255,160,0.06); }
+  .tag.keyword { color: #7ec8ff; border-color: rgba(126,200,255,0.2); background: rgba(126,200,255,0.06); }
+  .alert-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: all 0.2s; }
+  .icon-btn:hover { border-color: #ff4444; color: #ff4444; background: rgba(255,68,68,0.08); }
+  .icon-btn.edit:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+  /* FEED VIEW */
+  #feedView { display: none; }
+  .feed-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .feed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .feed-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    overflow: hidden; transition: all 0.2s; cursor: pointer;
+    animation: fadeUp 0.3s ease;
+    text-decoration: none; color: inherit; display: block;
+  }
+  .feed-card:hover { transform: translateY(-3px); border-color: #2e2e34; box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+  .feed-img { width: 100%; height: 180px; object-fit: cover; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 3rem; }
+  .feed-img img { width: 100%; height: 100%; object-fit: cover; }
+  .feed-body { padding: 14px 16px; }
+  .feed-title { font-size: 0.88rem; font-weight: 700; margin-bottom: 8px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .feed-bottom { display: flex; align-items: center; justify-content: space-between; }
+  .feed-price { font-size: 1rem; font-weight: 800; color: var(--green); }
+  .feed-time { font-size: 0.7rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .feed-alert-name { font-size: 0.68rem; color: var(--muted); margin-bottom: 6px; }
+  .new-badge { background: var(--accent); color: white; font-size: 0.62rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-left: 6px; animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-icon { font-size: 3rem; margin-bottom: 14px; opacity: 0.3; }
+  .empty h3 { font-size: 1rem; font-weight: 700; color: #3a3a45; margin-bottom: 8px; }
+  .empty p { font-size: 0.82rem; line-height: 1.5; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; width: 100%; max-width: 420px; transform: translateY(20px); transition: transform 0.2s; }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal h2 { font-size: 1rem; font-weight: 800; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .btn-cancel { flex: 1; background: transparent; border: 1px solid var(--border); border-radius: 10px; padding: 10px; color: var(--muted); font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .btn-cancel:hover { border-color: #3a3a45; color: var(--text); }
+  .btn-save { flex: 2; background: var(--accent); border: none; border-radius: 10px; padding: 10px; color: white; font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+  .btn-save:hover { background: #ff7a5c; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: 11px; padding: 11px 16px; font-size: 0.8rem; font-weight: 600; z-index: 300; transform: translateY(80px); opacity: 0; transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: rgba(61,255,160,0.3); color: var(--green); }
+  .toast.error { border-color: rgba(255,68,68,0.3); color: #ff6b6b; }
+
+  select option { background: #1a1a1f; }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">🔍</div>
+  <div class="logo">LBC<span>Finder</span></div>
+  <div class="header-right">
+    <div class="status-badge" id="statusBadge" style="display:none">
+      <div class="dot"></div>
+      <span id="alertCountText">0 alertes</span>
+    </div>
+    <div class="user-info" id="userInfo" style="display:none">
+      <img class="avatar" id="userAvatar" src="" alt="">
+      <span class="username" id="userName"></span>
+      <button class="logout-btn" onclick="logout()">Déconnexion</button>
+    </div>
+  </div>
+</header>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage">
+  <div class="login-emoji">🔍</div>
+  <h1>Trouve les meilleures<br>annonces <em>avant tout</em><br>le monde</h1>
+  <p>Connecte-toi avec Discord pour configurer tes alertes Leboncoin et recevoir les nouvelles annonces en temps réel.</p>
+  <a href="/auth/login" class="discord-btn">
+    <svg class="discord-logo" viewBox="0 0 24 24" fill="white"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.079.11 18.1.13 18.115a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+    Se connecter avec Discord
+  </a>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('alerts')">🔔 Mes alertes</div>
+    <div class="tab" onclick="switchTab('feed')" id="feedTab">📥 Mon feed <span id="newCount" style="display:none" class="new-badge">0</span></div>
+  </div>
+
+  <div class="main">
+    <!-- ALERTS TAB -->
+    <div id="alertsView">
+      <div>
+        <p class="panel-label">➕ Nouvelle alerte</p>
+        <div class="form-card">
+          <div class="form-group">
+            <label>Nom</label>
+            <input type="text" id="name" placeholder="ex: Manette PS5 pas chère">
+          </div>
+          <div class="form-group">
+            <label>Mot-clé</label>
+            <input type="text" id="keyword" placeholder="ex: manette PS5">
+          </div>
+          <div class="form-group">
+            <label>Catégorie</label>
+            <select id="category">
+              <option value="TOUTES_CATEGORIES">Toutes catégories</option>
+              <option value="ELECTRONIQUE_CONSOLES">🎮 Consoles & Jeux vidéo</option>
+              <option value="ELECTRONIQUE_JEUX_VIDEO">🕹️ Jeux vidéo</option>
+              <option value="ELECTRONIQUE_TELEPHONES_ET_OBJETS_CONNECTES">📱 Téléphones</option>
+              <option value="ELECTRONIQUE_ORDINATEURS">💻 Ordinateurs</option>
+              <option value="ELECTRONIQUE_TABLETTES_ET_LISEUSES">📱 Tablettes</option>
+              <option value="ELECTRONIQUE_PHOTO_AUDIO_ET_VIDEO">📷 Photo/Audio/Vidéo</option>
+              <option value="ELECTRONIQUE_ELECTROMENAGER">🏠 Électroménager</option>
+              <option value="VEHICULES_VOITURES">🚗 Voitures</option>
+              <option value="VEHICULES_MOTOS">🏍️ Motos</option>
+              <option value="VEHICULES_VELOS">🚲 Vélos</option>
+              <option value="IMMOBILIER_VENTES_IMMOBILIERES">🏠 Immobilier — Ventes</option>
+              <option value="IMMOBILIER_LOCATIONS">🏠 Immobilier — Locations</option>
+              <option value="MODE_VETEMENTS">👕 Vêtements</option>
+              <option value="MODE_CHAUSSURES">👟 Chaussures</option>
+              <option value="LOISIRS_LIVRES">📚 Livres</option>
+              <option value="LOISIRS_JEUX_ET_JOUETS">🧸 Jeux & Jouets</option>
+              <option value="LOISIRS_SPORT_ET_PLEIN_AIR">⚽ Sport</option>
+              <option value="LOISIRS_INSTRUMENTS_DE_MUSIQUE">🎸 Musique</option>
+              <option value="MAISON_ET_JARDIN_AMEUBLEMENT">🛋️ Ameublement</option>
+              <option value="ANIMAUX_ANIMAUX">🐾 Animaux</option>
+              <option value="FAMILLE_JEUX_ET_JOUETS">🧸 Famille</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Prix (€)</label>
+            <div class="price-row">
+              <input type="number" id="price_min" placeholder="Min">
+              <input type="number" id="price_max" placeholder="Max">
+            </div>
+          </div>
+          <button class="submit-btn" id="submitBtn" onclick="createAlert()">
+            <span>＋</span> Ajouter l'alerte
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <p class="panel-label" style="margin:0">🔔 Mes alertes actives</p>
+          <span style="font-size:0.72rem;color:var(--muted);font-family:'DM Mono',monospace" id="alertsCount">0 alertes</span>
+        </div>
+        <div class="alerts-grid" id="alertsGrid">
+          <div class="empty">
+            <div class="empty-icon">🔕</div>
+            <h3>Aucune alerte</h3>
+            <p>Ajoute ta première alerte pour recevoir des annonces.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FEED TAB -->
+    <div id="feedView">
+      <div class="feed-header">
+        <p class="panel-label" style="margin:0">📥 Nouvelles annonces</p>
+        <span style="font-size:0.72rem;color:var(--muted);font-family:'DM Mono',monospace">Mise à jour automatique</span>
+      </div>
+      <div class="feed-grid" id="feedGrid">
+        <div class="empty" style="grid-column:1/-1">
+          <div class="empty-icon">📭</div>
+          <h3>Feed vide</h3>
+          <p>Les nouvelles annonces de tes alertes<br>apparaîtront ici automatiquement.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>✏️ Modifier l'alerte</h2>
+    <input type="hidden" id="editId">
+    <div class="form-group"><label>Nom</label><input type="text" id="editName"></div>
+    <div class="form-group"><label>Mot-clé</label><input type="text" id="editKeyword"></div>
+    <div class="form-group">
+      <label>Catégorie</label>
+      <select id="editCategory">
+        <option value="TOUTES_CATEGORIES">Toutes catégories</option>
+        <option value="ELECTRONIQUE_CONSOLES">🎮 Consoles & Jeux vidéo</option>
+        <option value="ELECTRONIQUE_JEUX_VIDEO">🕹️ Jeux vidéo</option>
+        <option value="ELECTRONIQUE_TELEPHONES_ET_OBJETS_CONNECTES">📱 Téléphones</option>
+        <option value="ELECTRONIQUE_ORDINATEURS">💻 Ordinateurs</option>
+        <option value="ELECTRONIQUE_TABLETTES_ET_LISEUSES">📱 Tablettes</option>
+        <option value="ELECTRONIQUE_PHOTO_AUDIO_ET_VIDEO">📷 Photo/Audio/Vidéo</option>
+        <option value="ELECTRONIQUE_ELECTROMENAGER">🏠 Électroménager</option>
+        <option value="VEHICULES_VOITURES">🚗 Voitures</option>
+        <option value="VEHICULES_MOTOS">🏍️ Motos</option>
+        <option value="VEHICULES_VELOS">🚲 Vélos</option>
+        <option value="IMMOBILIER_VENTES_IMMOBILIERES">🏠 Immobilier — Ventes</option>
+        <option value="IMMOBILIER_LOCATIONS">🏠 Immobilier — Locations</option>
+        <option value="MODE_VETEMENTS">👕 Vêtements</option>
+        <option value="MODE_CHAUSSURES">👟 Chaussures</option>
+        <option value="LOISIRS_LIVRES">📚 Livres</option>
+        <option value="LOISIRS_JEUX_ET_JOUETS">🧸 Jeux & Jouets</option>
+        <option value="LOISIRS_SPORT_ET_PLEIN_AIR">⚽ Sport</option>
+        <option value="LOISIRS_INSTRUMENTS_DE_MUSIQUE">🎸 Musique</option>
+        <option value="MAISON_ET_JARDIN_AMEUBLEMENT">🛋️ Ameublement</option>
+        <option value="ANIMAUX_ANIMAUX">🐾 Animaux</option>
+        <option value="FAMILLE_JEUX_ET_JOUETS">🧸 Famille</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Prix (€)</label>
+      <div class="price-row">
+        <input type="number" id="editPriceMin" placeholder="Min">
+        <input type="number" id="editPriceMax" placeholder="Max">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-save" onclick="saveEdit()">💾 Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CAT_ICONS = {
+  "TOUTES_CATEGORIES":"🔍","ELECTRONIQUE_CONSOLES":"🎮","ELECTRONIQUE_JEUX_VIDEO":"🕹️",
+  "ELECTRONIQUE_TELEPHONES_ET_OBJETS_CONNECTES":"📱","ELECTRONIQUE_ORDINATEURS":"💻",
+  "ELECTRONIQUE_TABLETTES_ET_LISEUSES":"📱","ELECTRONIQUE_PHOTO_AUDIO_ET_VIDEO":"📷",
+  "ELECTRONIQUE_ELECTROMENAGER":"🏠","VEHICULES_VOITURES":"🚗","VEHICULES_MOTOS":"🏍️",
+  "VEHICULES_VELOS":"🚲","IMMOBILIER_VENTES_IMMOBILIERES":"🏠","IMMOBILIER_LOCATIONS":"🏠",
+  "MODE_VETEMENTS":"👕","MODE_CHAUSSURES":"👟","LOISIRS_LIVRES":"📚",
+  "LOISIRS_JEUX_ET_JOUETS":"🧸","LOISIRS_SPORT_ET_PLEIN_AIR":"⚽",
+  "LOISIRS_INSTRUMENTS_DE_MUSIQUE":"🎸","MAISON_ET_JARDIN_AMEUBLEMENT":"🛋️",
+  "ANIMAUX_ANIMAUX":"🐾","FAMILLE_JEUX_ET_JOUETS":"🧸"
+};
+
+let currentTab = 'alerts';
+let lastFeedCheck = null;
+let newAdsCount = 0;
+let feedData = [];
+
+// ── AUTH ──────────────────────────────────────────
+async function checkAuth() {
+  const res = await fetch('/auth/me');
+  const data = await res.json();
+  if (data.authenticated) {
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('userInfo').style.display = 'flex';
+    document.getElementById('statusBadge').style.display = 'flex';
+    document.getElementById('userAvatar').src = data.avatar_url;
+    document.getElementById('userName').textContent = data.username;
+    loadAlerts();
+    loadFeed();
+    setInterval(pollFeed, 15000);
+  }
+}
+
+function logout() { window.location.href = '/auth/logout'; }
+
+// ── TABS ──────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='alerts')||(i===1&&tab==='feed')));
+  document.getElementById('alertsView').style.display = tab === 'alerts' ? 'grid' : 'none';
+  document.getElementById('feedView').style.display = tab === 'feed' ? 'block' : 'none';
+  if (tab === 'feed') {
+    newAdsCount = 0;
+    document.getElementById('newCount').style.display = 'none';
+    renderFeed();
+  }
+}
+
+// ── ALERTS ────────────────────────────────────────
+async function loadAlerts() {
+  const res = await fetch('/api/alerts');
+  if (!res.ok) return;
+  const alerts = await res.json();
+  renderAlerts(alerts);
+}
+
+function renderAlerts(alerts) {
+  document.getElementById('alertsCount').textContent = `${alerts.length} alerte${alerts.length>1?'s':''}`;
+  document.getElementById('alertCountText').textContent = `${alerts.length} alerte${alerts.length>1?'s':''}`;
+  const grid = document.getElementById('alertsGrid');
+  if (!alerts.length) {
+    grid.innerHTML = `<div class="empty"><div class="empty-icon">🔕</div><h3>Aucune alerte</h3><p>Ajoute ta première alerte.</p></div>`;
+    return;
+  }
+  grid.innerHTML = alerts.map(a => {
+    const pMax = a.price_max >= 99999 ? '∞' : a.price_max;
+    return `<div class="alert-card" id="card-${a.id}">
+      <div class="alert-icon">${CAT_ICONS[a.category]||'🔍'}</div>
+      <div class="alert-info">
+        <div class="alert-name">${a.name}</div>
+        <div class="alert-meta">
+          <span class="tag keyword">🔍 ${a.keyword}</span>
+          <span class="tag price">💰 ${a.price_min}€ — ${pMax}€</span>
+        </div>
+      </div>
+      <div class="alert-actions">
+        <button class="icon-btn edit" onclick='openEdit(${JSON.stringify(a).replace(/"/g,"&quot;")})'  title="Modifier">✏️</button>
+        <button class="icon-btn" onclick="deleteAlert('${a.id}')" title="Supprimer">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function createAlert() {
+  const btn = document.getElementById('submitBtn');
+  const name = document.getElementById('name').value.trim();
+  const keyword = document.getElementById('keyword').value.trim();
+  if (!name || !keyword) { showToast('Nom et mot-clé obligatoires', 'error'); return; }
+  btn.disabled = true;
+  const res = await fetch('/api/alerts', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ name, keyword, category: document.getElementById('category').value, price_min: document.getElementById('price_min').value||0, price_max: document.getElementById('price_max').value||99999 })
+  });
+  btn.disabled = false;
+  if (res.ok) {
+    document.getElementById('name').value = '';
+    document.getElementById('keyword').value = '';
+    document.getElementById('price_min').value = '';
+    document.getElementById('price_max').value = '';
+    showToast('✅ Alerte ajoutée !', 'success');
+    loadAlerts();
+  } else showToast('Erreur', 'error');
+  btn.innerHTML = '<span>＋</span> Ajouter l\'alerte';
+}
+
+async function deleteAlert(id) {
+  await fetch(`/api/alerts/${id}`, {method:'DELETE'});
+  showToast('🗑️ Supprimée', 'success');
+  loadAlerts();
+}
+
+function openEdit(a) {
+  document.getElementById('editId').value = a.id;
+  document.getElementById('editName').value = a.name;
+  document.getElementById('editKeyword').value = a.keyword;
+  document.getElementById('editCategory').value = a.category;
+  document.getElementById('editPriceMin').value = a.price_min;
+  document.getElementById('editPriceMax').value = a.price_max >= 99999 ? '' : a.price_max;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+async function saveEdit() {
+  const id = document.getElementById('editId').value;
+  await fetch(`/api/alerts/${id}`, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name:document.getElementById('editName').value, keyword:document.getElementById('editKeyword').value, category:document.getElementById('editCategory').value, price_min:document.getElementById('editPriceMin').value||0, price_max:document.getElementById('editPriceMax').value||99999 })
+  });
+  closeModal(); showToast('✅ Modifiée !', 'success'); loadAlerts();
+}
+document.getElementById('modalOverlay').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+
+// ── FEED ──────────────────────────────────────────
+async function loadFeed() {
+  const res = await fetch('/api/feed');
+  if (!res.ok) return;
+  feedData = await res.json();
+  if (feedData.length) lastFeedCheck = feedData[0].created_at;
+  if (currentTab === 'feed') renderFeed();
+}
+
+async function pollFeed() {
+  const url = lastFeedCheck ? `/api/feed?since=${encodeURIComponent(lastFeedCheck)}` : '/api/feed';
+  const res = await fetch(url);
+  if (!res.ok) return;
+  const newAds = await res.json();
+  if (newAds.length) {
+    feedData = [...newAds, ...feedData].slice(0, 100);
+    lastFeedCheck = feedData[0].created_at;
+    if (currentTab !== 'feed') {
+      newAdsCount += newAds.length;
+      const badge = document.getElementById('newCount');
+      badge.textContent = newAdsCount;
+      badge.style.display = 'inline';
+    } else renderFeed();
+  }
+}
+
+function renderFeed() {
+  const grid = document.getElementById('feedGrid');
+  if (!feedData.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📭</div><h3>Feed vide</h3><p>Les nouvelles annonces apparaîtront ici automatiquement.</p></div>`;
+    return;
+  }
+  grid.innerHTML = feedData.map(ad => {
+    const time = new Date(ad.created_at).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
+    const imgContent = ad.image_url ? `<img src="${ad.image_url}" alt="" onerror="this.parentElement.innerHTML='📦'">` : '📦';
+    return `<a class="feed-card" href="${ad.url}" target="_blank">
+      <div class="feed-img">${imgContent}</div>
+      <div class="feed-body">
+        <div class="feed-alert-name">${ad.alert_name || 'Alerte'}</div>
+        <div class="feed-title">${ad.title}</div>
+        <div class="feed-bottom">
+          <span class="feed-price">${ad.price ? ad.price+'€' : 'Prix non renseigné'}</span>
+          <span class="feed-time">${time}</span>
+        </div>
+      </div>
+    </a>`;
+  }).join('');
+}
+
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} show`;
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+checkAuth();
+</script>
+</body>
+</html>
