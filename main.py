@@ -10,8 +10,8 @@ from lbc import Sort
 # =============================================
 # CONFIGURATION
 # =============================================
-SUPABASE_URL = "VOTRE_SUPABASE_URL"
-SUPABASE_KEY = "VOTRE_SUPABASE_ANON_KEY"
+SUPABASE_URL = "https://supabase.com/dashboard/project/wzsobvmzmpqvmfnwiiza"
+SUPABASE_KEY = "sb_secret_gT6X3P6xoFgnYkAT5EDIzQ_g446OM3N"
 CHECK_INTERVAL = 10
 # =============================================
 
